@@ -2,6 +2,7 @@ import app from '../src/app';
 import supertest from 'supertest';
 import { prisma } from '../src/database';
 import { recommendationService } from "../src/services/recommendationsService.js"
+import {  recommendationRepository} from "../src/repositories/recommendationRepository.js"
 beforeEach(async () => {
     await prisma.$executeRaw`TRUNCATE TABLE recommendations;`;
   });
@@ -102,17 +103,46 @@ describe("GET /tasks",  () => {
     });
 });
 describe("fun", () => {
-	it("fun serve",async () => {
+	it("criar a musica",async () => {
 		const body = {
             name: "Falamansa - Xote dos Milagres",
             youtubeLink: "https://www.youtube.com/watch?v=chwyjJbcs1Y"
         };
-		
+		    jest
+      .spyOn(  recommendationRepository, 'findByName')
+      .mockImplementationOnce((): any => {});
+
+    jest
+      .spyOn(  recommendationRepository, 'create')
+      .mockImplementationOnce((): any => {})
 		await recommendationService.insert(body);
-        const musica = await prisma.recommendation.findFirst({
-            where: { youtubeLink:  body.youtubeLink}
-          });
-      console.log(musica)
-		expect(musica).not.toBeNull();
+      console.log(recommendationRepository.findByName)
+    expect(recommendationRepository.findByName).toBeCalled();
+    expect(recommendationRepository.create).toBeCalled();
+     
+	});
+  it("nao deve permitir criar uma musica que ja exista no banco",async () => {
+		const body = {
+            name: "Falamansa - Xote dos Milagres",
+            youtubeLink: "https://www.youtube.com/watch?v=chwyjJbcs1Y"
+        };
+		    jest
+      .spyOn(  recommendationRepository, 'findByName')
+      .mockImplementationOnce((): any => {
+        return body
+      });
+
+    jest
+      .spyOn(  recommendationRepository, 'create')
+      .mockImplementationOnce((): any => {})
+		const resut = recommendationService.insert(body);
+      console.log(recommendationRepository.findByName)
+      //throw conflictError("Recommendations names must be unique");
+      expect(resut).rejects.toEqual({
+        type: 'conflict',
+        message: 'Recommendations names must be unique'
+      });
+    expect(recommendationRepository.create).toBeCalled();
+     
 	});
 });
